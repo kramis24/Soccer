@@ -3,6 +3,13 @@ package cs301.Soccer;
 import android.util.Log;
 import cs301.Soccer.soccerPlayer.SoccerPlayer;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOError;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.*;
 
 /**
@@ -141,7 +148,18 @@ public class SoccerDatabase implements SoccerDB {
     @Override
     // report number of players on a given team (or all players, if null)
     public int numPlayers(String teamName) {
-        return -1;
+        if (teamName == null) {
+            return database.size();
+        }
+
+        int count = 0;
+        for (SoccerPlayer p : database.values()) {
+            if (p.getTeamName().equals(teamName)) {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     /**
@@ -152,6 +170,26 @@ public class SoccerDatabase implements SoccerDB {
     // get the nTH player
     @Override
     public SoccerPlayer playerIndex(int idx, String teamName) {
+        if (idx > numPlayers(teamName)) {
+            return null;
+        }
+
+        for (SoccerPlayer p : database.values()) {
+            if (teamName != null) {
+                if (p.getTeamName().equals(teamName) && idx == 0) {
+                    return p;
+                } else if (p.getTeamName().equals(teamName)) {
+                    idx--;
+                }
+            } else {
+                if (idx == 0) {
+                    return p;
+                } else {
+                    idx--;
+                }
+            }
+        }
+
         return null;
     }
 
@@ -163,7 +201,57 @@ public class SoccerDatabase implements SoccerDB {
     // read data from file
     @Override
     public boolean readData(File file) {
-        return file.exists();
+        Scanner reader = null;
+
+        try {
+
+            reader = new Scanner(file);
+
+            while (reader.hasNext()) {
+
+                String firstName = reader.nextLine();
+                String lastName = reader.nextLine();
+                int uniform = reader.nextInt();
+                int goals = reader.nextInt();
+                int yellowCards = reader.nextInt();
+                int redCards = reader.nextInt();
+                reader.nextLine();
+                String teamName = reader.nextLine();
+
+                String key = firstName+" ## "+lastName;
+
+                if (database.get(key) != null) {
+                    database.remove(key);
+                }
+
+                addPlayer(firstName, lastName, uniform, teamName);
+
+                for (int i = 0; i < goals; i++) {
+                    bumpGoals(firstName, lastName);
+                }
+                for (int i = 0; i < yellowCards; i++) {
+                    bumpYellowCards(firstName, lastName);
+                }
+                for (int i = 0; i < redCards; i++) {
+                    bumpRedCards(firstName, lastName);
+                }
+
+            }
+
+            reader.close();
+
+        } catch (FileNotFoundException e) {
+
+            e.printStackTrace();
+            return false;
+
+        } catch (Exception e) {
+
+            return false;
+
+        }
+
+        return true;
     }
 
     /**
@@ -174,7 +262,31 @@ public class SoccerDatabase implements SoccerDB {
     // write data to file
     @Override
     public boolean writeData(File file) {
-        return false;
+        PrintWriter writer = null;
+
+        try {
+
+            writer = new PrintWriter(file);
+
+            for (SoccerPlayer p : database.values()) {
+                writer.println(logString(p.getFirstName()));
+                writer.println(logString(p.getLastName()));
+                writer.println(logString(Integer.toString(p.getUniform())));
+                writer.println(logString(Integer.toString(p.getGoals())));
+                writer.println(logString(Integer.toString(p.getYellowCards())));
+                writer.println(logString(Integer.toString(p.getRedCards())));
+                writer.println(logString(p.getTeamName()));
+            }
+
+            writer.close();
+
+        } catch (FileNotFoundException e) {
+
+            e.printStackTrace();
+            return false;
+        }
+
+        return true;
     }
 
     /**
